@@ -1,0 +1,32 @@
+Readme:
+
+1. Project overview:
+
+In project B, our goal is to get record (first next and this ) from heap file. But we have alread created a  bufferpool in Project A. Assume our block(page) can be inside the bufferpool or in the file, we need to check the whole buffer pool to ensure our block is or is not in it. If we cannot find that block in bufferpool, we have to call BM_get_this_block to get the block from file.
+
+As for how to compute the block id, because we have set our frame size to 4096 bytes at former project, while the record size is 16 bytes. So one block should contain 4096/16 = 256 records. 
+
+About the metadata: I create 4 arrays to store the different kinds of meta data. The insertmeta[100] is to store the record id which is last inserted. The meta data only used in my HFL_insert_rec function. Index of this array reprents fd. For example, insertmeta[1] = 5 means in file with fd = 1, the next record will be inserted is rid = 5. 
+The getmeta[100] is like insertmeta. But this array is used for storing the last used rid in get first, get next and get this record function. Index of this array is fd also.
+The sdmeta[100] and scanmeta[100][100] is used for file scan. I will describle these 2 array in the following part.
+
+2. Functions in Project B.c 
+
+HFL_init():
+In this function, I just call BM_init() to initialize the buffer pool. And use 2 for loops to initialize my file scan meta data. The sdmeta is used to store which sd is using in fd. For example, sdmeta[2]=5 means the sd 2 is using for file fd = 5 right now. Before calling close file scan function, this sd cannot be used for other fd's filescan.
+The 2-D array scanmeta[100][100] is storing the rid. The row number is sd, and column number is fd. For example, scanmeta[2][5] = 20 means the the sd = 2 , fd =5 filescan is last find the rid = 20 record. This array is only used in HFL_find_next_rec, we have to open a file scan at first. 
+
+
+HFL_creatr_file HFL_open_file HFL_close_file HFL_close_file:
+These 3 functions is same as Project A's function.
+
+HFL_insert_rec HFL_delete_rec
+As we describled before, first check the whole bufferpool. If our target block is in bufferpool, insert record to that position. If target block is not in bufferpool, use BM_get_this_block to put block into bufferpool. Then do insert. Delete action is same as insert.
+
+
+HFL_get_first_rec HFL_get_next_rec HFL_this_rec:
+In these 3 functions we need to use getmeta array. Same as former function, check the bufferpool at first. If we find target block in bufferpool, make rec point to that position.
+
+HFL_open_file_scan HFL_find_next_rec HFL_close_file_scan
+function open file scan is used to assign avaliable sd to the input fd. Then we can use find next record to scan the whole file. Close file scan will set the opened sd be avaliable again. Then we can use this sd in next file scan. For same fd, we can assign different sd, and every sd can scan file independently. I write a test at the end of hfl_tests.c to test these 3 functions.
+
